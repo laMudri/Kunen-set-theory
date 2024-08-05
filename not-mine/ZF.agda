@@ -286,8 +286,8 @@ Pairing-≡ {z = z} {x = x} {y = y} i with ∨-oracle (true-≡ i)
         ... | inj₁ refl = ι₁ refl𝕍
         ... | inj₂ refl = ι₂ refl𝕍
         zag : ∀ z -> z ∈ ⟨ ∅ , 𝟙 ⟩ -> z ∈ 𝟚
-        zag ∅ (ι₁ refl𝕍) ()
-        zag 𝟙 (ι₂ refl𝕍) i = i  -- removed the need for weird leading dots
+        zag .∅ (ι₁ refl𝕍) ()
+        zag .𝟙 (ι₂ refl𝕍) i = i
 
 -- Pairs are unordered.
 Pair-unordered : ∀ x y -> ⟨ x , y ⟩ ≡ ⟨ y , x ⟩
@@ -295,8 +295,8 @@ Pair-unordered x y = Extensional \ z ->
     equiv-equal [ zig x y z , zig y x z ]
     where
         zig : ∀ x y z -> z ∈ ⟨ x , y ⟩ -> z ∈ ⟨ y , x ⟩
-        zig x y x (ι₁ refl𝕍) = ι₂ refl𝕍    -- removed the dots
-        zig x y y (ι₂ refl𝕍) = ι₁ refl𝕍
+        zig x y .x (ι₁ refl𝕍) = ι₂ refl𝕍
+        zig x y .y (ι₂ refl𝕍) = ι₁ refl𝕍
 
 -- We have a criterion for pair equality.
 -- To prove that cleanly, we first develop some tools.
