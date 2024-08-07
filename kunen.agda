@@ -19,7 +19,7 @@ set-existence : ∃[ x ∈ 𝕍 ] (x ≗ x)
 set-existence = existential-import 𝕍 (λ x → x ≗ x) (λ x → refl𝕍)
 
 -- Definition I.6.1
-emp : ∀ x → Prop
+emp : 𝕍 → Prop
 emp x = ∀ y → ¬ y ∈ x
 
 -- Theorem I.6.2
@@ -48,7 +48,7 @@ private
 
     -- Bonus: this derivation does not use LEM, as (P ↔ ¬P) → ⊥ is derivable intuitionistically.
     intuitive : {P : Prop} → (P → ¬ P) ∧ (¬ P → P) → ⊥
-    intuitive {P} [ zig , zag ] = (λ x → zig x x) (zag (λ x → zig x x))
+    intuitive [ zig , zag ] = (λ x → zig x x) (zag (λ x → zig x x))
     
     russell-paradox : ⊥
     russell-paradox = intuitive [ zig , zag ]
@@ -60,8 +60,8 @@ private
 
 -- Theorem I.6.6
 -- There is no set which contains all sets.
-russell : ∀ z → 𝕍
-russell z = ⟦ x ∈ z ∥ ¬ x ∈ x ⟧ 
+russell : 𝕍 → 𝕍
+russell z = ⟦ x ∈ z ∥ ¬ x ∈ x ⟧
 
 no-𝕍-set : ∀ x → ∃[ y ∈ 𝕍 ] ¬ y ∈ x
 no-𝕍-set x = exists (russell x) λ y∈x → intuitive [ zig y∈x , zag y∈x ]
@@ -76,6 +76,8 @@ no-𝕍-set x = exists (russell x) λ y∈x → intuitive [ zig y∈x , zag y∈
 -- Relations
 
 -- Special ∈-properties to define ordinals.
+-- It gets special treatment, because this is not a set relation,
+-- it is a relation on the proper class 𝕍
 ∈-transitive : 𝕍 → Prop
 ∈-transitive A = (x y z : 𝕍) → x ∈ A → y ∈ A → z ∈ A →
     x ∈ y → y ∈ z → x ∈ z
@@ -91,9 +93,12 @@ no-𝕍-set x = exists (russell x) λ y∈x → intuitive [ zig y∈x , zag y∈
 ∈-total : 𝕍 → Prop
 ∈-total A = ∈-transitive A ∧ ∈-trichotomy A -- ∧ ∈-irreflexive A
 
+∈-well-founded : 𝕍 → Prop
+∈-well-founded A = ∀ X → ¬ X ≗ ∅ → X ⊆ A → ∃[ y ∈ 𝕍 ] ∀ z → z ∈ X → ¬ z ∈ y
+
 -- I leave ∈-well-foundedness out of the definition as well, as Foundation guarantees it.
 ∈-well-ordered : 𝕍 → Prop
-∈-well-ordered A = ∈-total A
+∈-well-ordered A = ∈-total A -- ∧ ∈-well-founded A
 
 transitive-set : 𝕍 → Prop
 transitive-set z = ∀ y → y ∈ z → y ⊆ z
@@ -129,3 +134,32 @@ ON-transitive-class α z ord-α z∈α =
                 where
                     y⊆α : y ⊆ α
                     y⊆α = (π₁ ord-α) y (z⊆α y∈z)
+
+∩-preserves-transitive-set : ∀ {x y} → transitive-set x → transitive-set y → transitive-set (x ∩ y)
+∩-preserves-transitive-set {x} {y} trans-x trans-y =
+    λ z → λ { [ z∈x , z∈y ] → λ w∈z → [ (trans-x z z∈x) w∈z , (trans-y z z∈y) w∈z ] } 
+
+-- Really simple, but thus far unproved.
+A∩B⊆A : ∀ {A B} → (A ∩ B) ⊆ A
+A∩B⊆A = π₁  -- [ z∈A , z∈B ] = z∈A
+
+A∩B⊆B : ∀ {A B} → (A ∩ B) ⊆ B
+A∩B⊆B = π₂  -- [ z∈A , z∈B ] = z∈B
+
+-- Lemma I.8.7
+∩-preserves-ordinal : ∀ {α β} → ordinal α → ordinal β → ordinal (α ∩ β)
+∩-preserves-ordinal {α} {β} ord-α ord-β =
+    [ ∩-preserves-transitive-set {α} {β} (π₁ ord-α) (π₁ ord-β) ,
+      well-order-⊆-transport {α} {α ∩ β} (π₂ ord-α) (A∩B⊆A {α} {β}) ]
+
+-- Lemma I.8.8
+⊆-is-≤ : ∀ {α β} → ordinal α → ordinal β → α ⊆ β ≡ α ∈ β ∨ α ≗ β
+⊆-is-≤ {α} {β} ord-α ord-β =
+    equiv-equal [ zig , zag ]
+    where
+        zig : α ⊆ β → α ∈ β ∨ (α ≗ β)
+        zig α⊆β = {!   !}
+        
+        zag : α ∈ β ∨ (α ≗ β) → α ⊆ β
+        zag (ι₁ α∈β) = (π₁ ord-β) α α∈β 
+        zag (ι₂ refl𝕍) = idP
