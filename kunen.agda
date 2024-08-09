@@ -104,7 +104,6 @@ transitive-set z = ∀ y → y ∈ z → y ⊆ z
 ordinal : 𝕍 → Prop
 ordinal z = transitive-set z ∧ ∈-well-ordered z
 
-
 -- Constructors for properties of ordinals
 ordinal-is-transitive : ∀ {α} → ordinal α → ∈-transitive α
 ordinal-is-transitive ord-α = π₁ (π₁ (π₁ (π₂ ord-α)))
@@ -126,7 +125,6 @@ ordinal-is-well-ordered ord-α = π₂ ord-α
 
 ordinal-is-transitive-set : ∀ {α} → ordinal α → transitive-set α
 ordinal-is-transitive-set ord-α = π₁ ord-α
-
 
 -- Really simple, but thus far unproved.
 A∩B⊆A : ∀ {A B} → (A ∩ B) ⊆ A
@@ -161,40 +159,42 @@ well-order-⊆-transport {A} {X} wo-A X⊆A = [ total-X , well-founded-X ]
 -- Theorem I.8.5
 -- The well-ordering of ON.
 
--- -- Lemma I.8.6
--- ON-transitive-class : ∀ α z → ordinal α → z ∈ α → ordinal z
--- ON-transitive-class α z ord-α z∈α =
---     [ trans-set-z ,
---     well-order-⊆-transport {α} {z} (π₂ ord-α) ((π₁ ord-α) z z∈α) ]
---     where
---         z⊆α : z ⊆ α
---         z⊆α = (π₁ ord-α) z z∈α
---         trans-set-z : transitive-set z
---         trans-set-z y y∈z x∈y =
---             (π₁ (π₂ ord-α)) _ y z (y⊆α x∈y) (z⊆α y∈z) z∈α x∈y y∈z
---                 where
---                     y⊆α : y ⊆ α
---                     y⊆α = (π₁ ord-α) y (z⊆α y∈z)
--- 
--- ∩-preserves-transitive-set : ∀ {x y} → transitive-set x → transitive-set y → transitive-set (x ∩ y)
--- ∩-preserves-transitive-set {x} {y} trans-x trans-y =
---     λ z → λ { [ z∈x , z∈y ] → λ w∈z → [ (trans-x z z∈x) w∈z , (trans-y z z∈y) w∈z ] } 
--- 
--- 
--- -- Lemma I.8.7
--- ∩-preserves-ordinal : ∀ {α β} → ordinal α → ordinal β → ordinal (α ∩ β)
--- ∩-preserves-ordinal {α} {β} ord-α ord-β =
---     [ ∩-preserves-transitive-set {α} {β} (π₁ ord-α) (π₁ ord-β) ,
---       well-order-⊆-transport {α} {α ∩ β} (π₂ ord-α) (A∩B⊆A {α} {β}) ]
--- 
--- -- Lemma I.8.8
--- ⊆-is-≤ : ∀ {α β} → ordinal α → ordinal β → α ⊆ β ≡ α ∈ β ∨ α ≗ β
--- ⊆-is-≤ {α} {β} ord-α ord-β =
---     equiv-equal [ zig , zag ]
---     where
---         zig : α ⊆ β → α ∈ β ∨ (α ≗ β)
---         zig α⊆β = {!   !}
---         
---         zag : α ∈ β ∨ (α ≗ β) → α ⊆ β
---         zag (ι₁ α∈β) = (π₁ ord-β) α α∈β 
---         zag (ι₂ refl𝕍) = idP
+-- Lemma I.8.6
+ON-transitive-class : ∀ α → ordinal α → ∀ z → z ∈ α → ordinal z
+ON-transitive-class α ord-α z z∈α =
+    [ trans-set-z , well-ordered-z ]
+    where
+        z⊆α : z ⊆ α
+        z⊆α = (ordinal-is-transitive-set {α} ord-α) z z∈α
+        trans-set-z : transitive-set z
+        trans-set-z y y∈z x∈y =
+            (ordinal-is-transitive {α} ord-α) (y⊆α x∈y) (z⊆α y∈z) z∈α x∈y y∈z
+                where
+                    y⊆α : y ⊆ α
+                    y⊆α = (ordinal-is-transitive-set {α} ord-α) y (z⊆α y∈z)
+        
+        well-ordered-z : ∈-well-ordered z
+        well-ordered-z =
+            well-order-⊆-transport {α} {z} (ordinal-is-well-ordered {α} ord-α) ((ordinal-is-transitive-set {α} ord-α) z z∈α)
+
+∩-preserves-transitive-set : ∀ {x y} → transitive-set x → transitive-set y → transitive-set (x ∩ y)
+∩-preserves-transitive-set {x} {y} trans-x trans-y =
+    λ z → λ { [ z∈x , z∈y ] → λ w∈z → [ (trans-x z z∈x) w∈z , (trans-y z z∈y) w∈z ] } 
+
+-- Lemma I.8.7
+∩-preserves-ordinal : ∀ {α β} → ordinal α → ordinal β → ordinal (α ∩ β)
+∩-preserves-ordinal {α} {β} ord-α ord-β =
+    [ ∩-preserves-transitive-set {α} {β} (ordinal-is-transitive-set {α} ord-α) (ordinal-is-transitive-set {β} ord-β) ,
+      well-order-⊆-transport {α} {α ∩ β} (ordinal-is-well-ordered {α} ord-α) (A∩B⊆A {α} {β}) ]
+
+-- Lemma I.8.8
+⊆-is-≤ : ∀ {α β} → ordinal α → ordinal β → α ⊆ β ≡ α ∈ β ∨ α ≗ β
+⊆-is-≤ {α} {β} ord-α ord-β =
+    equiv-equal [ zig , zag ]
+    where
+        zig : α ⊆ β → α ∈ β ∨ (α ≗ β)
+        zig α⊆β = {!   !}
+        
+        zag : α ∈ β ∨ (α ≗ β) → α ⊆ β
+        zag (ι₁ α∈β) = (ordinal-is-transitive-set {β} ord-β) α α∈β 
+        zag (ι₂ refl𝕍) = idP
