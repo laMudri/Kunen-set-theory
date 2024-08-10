@@ -271,16 +271,71 @@ _∖_ A B = ⟦ x ∈ A ∥ ¬ x ∈ B ⟧
                                 
                                 exists-μ : ∃[ μ ∈ 𝕍 ] μ ∈ Y
                                 exists-μ = non-empty (¬≗-¬≡ Y-not-empty)
-                                
+                                    
                                 another-sublemma : ∃[ μ ∈ 𝕍 ] μ ∈ Y → α ≗ ξ
                                 another-sublemma (exists μ μ∈Y) = ex-falso (absurd dilemma)
                                     where
+                                        ¬P→P∨Q∨R→Q∨R : {P Q R : Prop} → ¬ P → P ∨ Q ∨ R → Q ∨ R
+                                        ¬P→P∨Q∨R→Q∨R {P} {Q} {R} ¬p (ι₁ (ι₁ p)) = ex-falso (¬p p)
+                                        ¬P→P∨Q∨R→Q∨R {P} {Q} {R} ¬p (ι₁ (ι₂ q)) = ι₁ q
+                                        ¬P→P∨Q∨R→Q∨R {P} {Q} {R} ¬p (ι₂ r) = ι₂ r
+                                        -- solve 1 (λ P Q R → (¡ P ==> P ||| Q ||| R ==> Q ||| R)) P Q R
+                                        -- Solver can't handle multiple proposition variables?
+                                    
+                                        μ∈β : μ ∈ β
+                                        μ∈β = α⊆β (π₁ μ∈Y)
+                                    
                                         dilemma : ξ ∈ μ ∨ μ ≗ ξ
-                                        dilemma = {!   !}
+                                        dilemma = ¬P→P∨Q∨R→Q∨R (π₂ μ∈Y) ((ordinal-has-trichotomy {β} ord-β) μ∈β ξ∈β)
                                         
                                         absurd : ξ ∈ μ ∨ μ ≗ ξ → ⊥
-                                        absurd = {!   !}
+                                        absurd (ι₁ ξ∈μ) =
+                                            (π₂ (π₁ ξ-min-X)) (((ordinal-is-transitive-set {α} ord-α) μ (π₁ μ∈Y)) ξ∈μ)
+                                        absurd (ι₂ refl𝕍) = (π₂ (π₁ ξ-min-X)) (π₁ μ∈Y)
         
         zag : α ∈ β ∨ (α ≗ β) → α ⊆ β
         zag (ι₁ α∈β) = (ordinal-is-transitive-set {β} ord-β) α α∈β
-        zag (ι₂ refl𝕍) = idP 
+        zag (ι₂ refl𝕍) = idP
+
+≗-trans : ∀ {a b c} → a ≗ b → b ≗ c → a ≗ c
+≗-trans refl𝕍 refl𝕍 = refl𝕍
+
+≗-transport : ∀ {a b} (f : 𝕍 → Prop) → a ≗ b → f a → f b
+≗-transport f refl𝕍 fa = fa
+
+-- Proof of Theorem I.8.5
+-- (1)
+∈-transitive-on-ON :
+    ∀ {α β γ} → ordinal α → ordinal β → ordinal γ → α ∈ β → β ∈ γ → α ∈ γ
+∈-transitive-on-ON {α} {β} {γ} ord-α ord-β ord-γ α∈β β∈γ =
+    (((ordinal-is-transitive-set {γ} ord-γ) β) β∈γ) α∈β
+    
+-- (2)
+∈-irrefelxive-on-ON : ∀ {α} → ordinal α → ¬ α ∈ α
+∈-irrefelxive-on-ON {α} ord-α α∈α = ((ordinal-is-irreflexive {α} ord-α) α∈α) α∈α
+
+-- (3)
+∈-has-trichotomy : ∀ {α β} → ordinal α → ordinal β → α ∈ β ∨ β ∈ α ∨ α ≗ β
+∈-has-trichotomy {α} {β} ord-α ord-β =
+    sublemma (equal-equiv (⊆-is-≤ ord-δ ord-α) δ⊆α) (equal-equiv (⊆-is-≤ ord-δ ord-β) δ⊆β)
+    where
+        δ : 𝕍
+        δ = α ∩ β
+
+        ord-δ : ordinal δ
+        ord-δ = ∩-preserves-ordinal {α} {β} ord-α ord-β
+        
+        δ⊆α : δ ⊆ α
+        δ⊆α = A∩B⊆A {α} {β}
+        
+        δ⊆β : δ ⊆ β
+        δ⊆β = A∩B⊆B {α} {β}
+        
+        sublemma : δ ∈ α ∨ δ ≗ α → δ ∈ β ∨ δ ≗ β → α ∈ β ∨ β ∈ α ∨ α ≗ β
+        sublemma (ι₁ δ∈α) (ι₁ δ∈β) = ex-falso (∈-irrefelxive-on-ON {δ} ord-δ δ∈δ)
+            where
+                δ∈δ : δ ∈ δ
+                δ∈δ = [ δ∈α , δ∈β ]
+        sublemma (ι₂ δ≗α) (ι₁ δ∈β) = ι₁ (ι₁ ((≗-transport (λ x → x ∈ β) δ≗α) δ∈β))
+        sublemma (ι₁ δ∈α) (ι₂ δ≗β) = ι₁ (ι₂ ((≗-transport (λ x → x ∈ α) δ≗β) δ∈α)) 
+        sublemma (ι₂ δ≗α) (ι₂ δ≗β) = ι₂ (≗-trans (symmP δ≗α) δ≗β)
