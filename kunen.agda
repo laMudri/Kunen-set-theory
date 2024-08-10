@@ -92,8 +92,11 @@ no-𝕍-set x = exists (russell x) λ y∈x → intuitive [ zig y∈x , zag y∈
 ∈-total : 𝕍 → Prop
 ∈-total A = ∈-transitive A ∧ ∈-irreflexive A ∧ ∈-trichotomy A
 
+_∈-minimal-in_ : 𝕍 → 𝕍 → Prop
+_∈-minimal-in_ y X = (y ∈ X ∧ ∀ z → z ∈ X → ¬ z ∈ y)
+
 ∈-well-founded : 𝕍 → Prop
-∈-well-founded A = ∀ X → ¬ X ≗ ∅ → X ⊆ A → ∃[ y ∈ 𝕍 ] (y ∈ X ∧ ∀ z → z ∈ X → ¬ z ∈ y)
+∈-well-founded A = ∀ X → ¬ X ≗ ∅ → X ⊆ A → ∃[ y ∈ 𝕍 ] (y ∈-minimal-in X)
 
 ∈-well-ordered : 𝕍 → Prop
 ∈-well-ordered A = ∈-total A ∧ ∈-well-founded A
@@ -187,14 +190,97 @@ ON-transitive-class α ord-α z z∈α =
     [ ∩-preserves-transitive-set {α} {β} (ordinal-is-transitive-set {α} ord-α) (ordinal-is-transitive-set {β} ord-β) ,
       well-order-⊆-transport {α} {α ∩ β} (ordinal-is-well-ordered {α} ord-α) (A∩B⊆A {α} {β}) ]
 
+_∖_ : 𝕍 → 𝕍 → 𝕍
+_∖_ A B = ⟦ x ∈ A ∥ ¬ x ∈ B ⟧
+
+∅-implies-empty : ∀ {A} → A ≗ ∅ → ∀ z → ¬ z ∈ A
+∅-implies-empty refl𝕍 z = equal-equiv (∅-empty {z})
+
+⊆-antisymmetry : ∀ {A B} → A ⊆ B → B ⊆ A → A ≗ B
+⊆-antisymmetry A⊆B B⊆A = ≡-≗ (Extensional (λ z → equiv-equal [ A⊆B , B⊆A ]))
+
+-- Some lemmas about setminus.
+∖-not-∅ : ∀ {A B} → ¬ A ≗ B → A ⊆ B → ¬ (B ∖ A) ≗ ∅
+∖-not-∅ {A} {B} ¬A≗B A⊆B eq = ¬A≗B (⊆-antisymmetry A⊆B B⊆A)
+    where
+        aux : ∀ {P Q} → ¬ (P ∧ ¬ Q) → (P → Q)
+        aux {P} {Q} hyp p with truth Q
+        ... | inj₁ yes = ≡-true yes
+        ... | inj₂ no = ex-falso (hyp [ p , ≡-false no ])
+        
+        B⊆A : B ⊆ A
+        B⊆A {z} z∈B = (aux (∅-implies-empty eq z)) z∈B
+        
+∖-⊆ : ∀ {A B} → (A ∖ B) ⊆ A
+∖-⊆ [ x∈A , x∉B ] = x∈A
+
+¬≗-¬≡ : ∀ {x y} → ¬ x ≗ y → (x ≡ y → ⊥)
+¬≗-¬≡ ¬x≗y x≡y = ¬x≗y (≡-≗ x≡y)
+
 -- Lemma I.8.8
 ⊆-is-≤ : ∀ {α β} → ordinal α → ordinal β → α ⊆ β ≡ α ∈ β ∨ α ≗ β
 ⊆-is-≤ {α} {β} ord-α ord-β =
     equiv-equal [ zig , zag ]
     where
         zig : α ⊆ β → α ∈ β ∨ (α ≗ β)
-        zig α⊆β = {!   !}
+        zig α⊆β with truth (α ≗ β)
+        ... | inj₁ eq = ι₂ (≡-true eq)
+        ... | inj₂ neq = ι₁ (sublemma exists-ξ)
+            where
+                X : 𝕍
+                X = β ∖ α
+                
+                exists-ξ : ∃[ y ∈ 𝕍 ] (y ∈-minimal-in X)
+                exists-ξ =
+                    (ordinal-is-well-founded {β} ord-β) X (∖-not-∅ (≡-false neq) α⊆β) (∖-⊆ {β} {α})
+                
+                sublemma : ∃[ y ∈ 𝕍 ] (y ∈-minimal-in X) → α ∈ β
+                sublemma (exists ξ ξ-min-X) = equal-equiv (cong (λ x → x ∈ β) (≗-≡ (symmP α≗ξ))) ξ∈β
+                    where
+                        ξ∈β : ξ ∈ β
+                        ξ∈β = π₁ (π₁ ξ-min-X)
+                        
+                        ξ⊆α : ξ ⊆ α
+                        ξ⊆α {μ} μ∈ξ = μ∈α
+                            where
+                                μ∈β : μ ∈ β
+                                μ∈β = ((ordinal-is-transitive-set {β} ord-β) ξ ξ∈β) μ∈ξ
+                            
+                                μ∉X : ¬ μ ∈ X
+                                μ∉X μ∈X = ((π₂ ξ-min-X) μ μ∈X) μ∈ξ
+                        
+                                -- temporary, repetitive, ugly    
+                                aux : ∀ {P Q} → ¬ (P ∧ ¬ Q) → (P → Q)
+                                aux {P} {Q} hyp p with truth Q
+                                ... | inj₁ yes = ≡-true yes
+                                ... | inj₂ no = ex-falso (hyp [ p , ≡-false no ])
+                                
+                                μ∈α : μ ∈ α
+                                μ∈α = (aux μ∉X) μ∈β
+                        
+                        α≗ξ : α ≗ ξ
+                        α≗ξ with truth (ξ ≗ α)
+                        ... | inj₁ eq = symmP (≡-true eq)
+                        ... | inj₂ neq = another-sublemma exists-μ
+                            where
+                                Y : 𝕍
+                                Y = α ∖ ξ
+                                
+                                Y-not-empty : ¬ Y ≗ ∅
+                                Y-not-empty = ∖-not-∅ (≡-false neq) ξ⊆α
+                                
+                                exists-μ : ∃[ μ ∈ 𝕍 ] μ ∈ Y
+                                exists-μ = non-empty (¬≗-¬≡ Y-not-empty)
+                                
+                                another-sublemma : ∃[ μ ∈ 𝕍 ] μ ∈ Y → α ≗ ξ
+                                another-sublemma (exists μ μ∈Y) = ex-falso (absurd dilemma)
+                                    where
+                                        dilemma : ξ ∈ μ ∨ μ ≗ ξ
+                                        dilemma = {!   !}
+                                        
+                                        absurd : ξ ∈ μ ∨ μ ≗ ξ → ⊥
+                                        absurd = {!   !}
         
         zag : α ∈ β ∨ (α ≗ β) → α ⊆ β
-        zag (ι₁ α∈β) = (ordinal-is-transitive-set {β} ord-β) α α∈β 
-        zag (ι₂ refl𝕍) = idP
+        zag (ι₁ α∈β) = (ordinal-is-transitive-set {β} ord-β) α α∈β
+        zag (ι₂ refl𝕍) = idP 
