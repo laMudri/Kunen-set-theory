@@ -33,56 +33,66 @@ _∈-minimal-in_ y X = (y ∈ X ∧ ∀ z → z ∈ X → ¬ z ∈ y)
 ∈-well-founded : 𝕍 → Prop
 ∈-well-founded A = ∀ X → ¬ X ≗ ∅ → X ⊆ A → ∃[ y ∈ 𝕍 ] (y ∈-minimal-in X)
 
-∈-well-ordered : 𝕍 → Prop
-∈-well-ordered A = ∈-total A ∧ ∈-well-founded A
+record ∈-well-ordered (A : 𝕍) : Prop where
+  constructor mkWO
+  field
+    tot : ∈-total A
+    wf : ∈-well-founded A
+open ∈-well-ordered public
 
-transitive-set : 𝕍 → Prop
-transitive-set z = ∀ y → y ∈ z → y ⊆ z
+record transitive-set (z : 𝕍) : Prop where
+  constructor mkTrs
+  field get : ∀ y → y ∈ z → y ⊆ z
+open transitive-set public
 
-ordinal : 𝕍 → Prop
-ordinal z = transitive-set z ∧ ∈-well-ordered z
+record ordinal (z : 𝕍) : Prop where
+  constructor mkOrdinal
+  field
+    trs : transitive-set z
+    wo : ∈-well-ordered z
+open ordinal public
 
 -- Constructors for properties of ordinals
 ordinal-is-transitive : ∀ {α} → ordinal α → ∈-transitive α
-ordinal-is-transitive ord-α = π₁ (π₁ (π₁ (π₂ ord-α)))
+ordinal-is-transitive ord-α = π₁ (π₁ (tot (wo ord-α)))
 
 ordinal-is-irreflexive : ∀ {α} → ordinal α → ∈-irreflexive α
-ordinal-is-irreflexive ord-α = π₂ (π₁ (π₁ (π₂ ord-α)))
+ordinal-is-irreflexive ord-α = π₂ (π₁ (tot (wo ord-α)))
 
 ordinal-has-trichotomy : ∀ {α} → ordinal α → ∈-trichotomy α
-ordinal-has-trichotomy ord-α = π₂ (π₁ (π₂ ord-α))
+ordinal-has-trichotomy ord-α = π₂ (tot (wo ord-α))
 
 ordinal-is-total : ∀ {α} → ordinal α → ∈-total α
-ordinal-is-total ord-α = π₁ (π₂ ord-α)
+ordinal-is-total ord-α = tot (wo ord-α)
 
 ordinal-is-well-founded : ∀ {α} → ordinal α → ∈-well-founded α
-ordinal-is-well-founded ord-α = π₂ (π₂ ord-α)
+ordinal-is-well-founded ord-α = wf (wo ord-α)
 
 ordinal-is-well-ordered : ∀ {α} → ordinal α → ∈-well-ordered α
-ordinal-is-well-ordered ord-α = π₂ ord-α
+ordinal-is-well-ordered ord-α = wo ord-α
 
 ordinal-is-transitive-set : ∀ {α} → ordinal α → transitive-set α
-ordinal-is-transitive-set ord-α = π₁ ord-α
+ordinal-is-transitive-set ord-α = trs ord-α
 
 -- Exercise I.7.21 (for ∈)
 well-order-⊆-transport : ∀ {A X} → ∈-well-ordered A → X ⊆ A → ∈-well-ordered X
-well-order-⊆-transport {A} {X} wo-A X⊆A = [ total-X , well-founded-X ]
+well-order-⊆-transport {A} {X} wo-A X⊆A = mkWO total-X well-founded-X
     where
         total-X : ∈-total X
         total-X = [ [ trans-X , irreflexive-X ] , trichotomy-X ]
             where
                 trans-X : ∈-transitive X
                 trans-X x∈X y∈X z∈X x∈y y∈z =
-                   (π₁ (π₁ (π₁ wo-A))) (X⊆A x∈X) (X⊆A y∈X) (X⊆A z∈X) x∈y y∈z
+                   (π₁ (π₁ (tot wo-A))) (X⊆A x∈X) (X⊆A y∈X) (X⊆A z∈X) x∈y y∈z
                 irreflexive-X :  ∈-irreflexive X
-                irreflexive-X x∈X = (π₂ (π₁ (π₁ wo-A))) (X⊆A x∈X)
+                irreflexive-X x∈X = (π₂ (π₁ (tot wo-A))) (X⊆A x∈X)
                 trichotomy-X : ∈-trichotomy X
                 trichotomy-X x∈X y∈X =
-                   (π₂ (π₁ wo-A)) (X⊆A x∈X) (X⊆A y∈X)
+                   (π₂ (tot wo-A)) (X⊆A x∈X) (X⊆A y∈X)
                 
         well-founded-X : ∈-well-founded X
         well-founded-X Y not-∅ Y⊆X =
-            (π₂ wo-A) Y not-∅ (⊆-transitive {Y} {X} {A} Y⊆X X⊆A)
+            (wf wo-A) Y not-∅ (⊆-transitive {Y} {X} {A} Y⊆X X⊆A)
         
 -- Theorem I.8.5
 -- The well-ordering of ON.
@@ -90,30 +100,29 @@ well-order-⊆-transport {A} {X} wo-A X⊆A = [ total-X , well-founded-X ]
 -- Lemma I.8.6
 ON-transitive-class : ∀ {α} → ordinal α → ∀ {z} → z ∈ α → ordinal z
 ON-transitive-class {α} ord-α {z} z∈α =
-    [ trans-set-z , well-ordered-z ]
+    mkOrdinal trans-set-z well-ordered-z
     where
         z⊆α : z ⊆ α
-        z⊆α = (ordinal-is-transitive-set {α} ord-α) z z∈α
+        z⊆α = (ordinal-is-transitive-set ord-α) .get z z∈α
         trans-set-z : transitive-set z
-        trans-set-z y y∈z x∈y =
-            (ordinal-is-transitive {α} ord-α) (y⊆α x∈y) (z⊆α y∈z) z∈α x∈y y∈z
+        trans-set-z .get y y∈z x∈y =
+            (ordinal-is-transitive ord-α) (y⊆α x∈y) (z⊆α y∈z) z∈α x∈y y∈z
                 where
                     y⊆α : y ⊆ α
-                    y⊆α = (ordinal-is-transitive-set {α} ord-α) y (z⊆α y∈z)
+                    y⊆α = (trs ord-α) .get y (z⊆α y∈z)
         
         well-ordered-z : ∈-well-ordered z
-        well-ordered-z =
-            well-order-⊆-transport {α} {z} (ordinal-is-well-ordered {α} ord-α) ((ordinal-is-transitive-set {α} ord-α) z z∈α)
+        well-ordered-z = well-order-⊆-transport (wo ord-α) ((trs ord-α) .get z z∈α)
 
 ∩-preserves-transitive-set : ∀ {x y} → transitive-set x → transitive-set y → transitive-set (x ∩ y)
-∩-preserves-transitive-set {x} {y} trans-x trans-y =
-    λ z → λ { [ z∈x , z∈y ] → λ w∈z → [ (trans-x z z∈x) w∈z , (trans-y z z∈y) w∈z ] } 
+∩-preserves-transitive-set trans-x trans-y .get z ([ z∈x , z∈y ]) w∈z =
+  [ (trans-x .get z z∈x) w∈z , (trans-y .get z z∈y) w∈z ]
 
 -- Lemma I.8.7
 ∩-preserves-ordinal : ∀ {α β} → ordinal α → ordinal β → ordinal (α ∩ β)
-∩-preserves-ordinal {α} {β} ord-α ord-β =
-    [ ∩-preserves-transitive-set {α} {β} (ordinal-is-transitive-set {α} ord-α) (ordinal-is-transitive-set {β} ord-β) ,
-      well-order-⊆-transport {α} {α ∩ β} (ordinal-is-well-ordered {α} ord-α) (A∩B⊆A {α} {β}) ]
+∩-preserves-ordinal {α} {β} ord-α ord-β = mkOrdinal
+    (∩-preserves-transitive-set (ordinal-is-transitive-set ord-α) (ordinal-is-transitive-set ord-β))
+    (well-order-⊆-transport (ordinal-is-well-ordered ord-α) (A∩B⊆A {α} {β}))
 
 -- Lemma I.8.8
 ⊆-is-≤ : ∀ {α β} → ordinal α → ordinal β → α ⊆ β ≡ α ∈ β ∨ α ≗ β
@@ -130,7 +139,7 @@ ON-transitive-class {α} ord-α {z} z∈α =
                 
                 exists-ξ : ∃[ y ∈ 𝕍 ] (y ∈-minimal-in X)
                 exists-ξ =
-                    (ordinal-is-well-founded {β} ord-β) X (∖-not-∅ (≡-false neq) α⊆β) (∖-⊆ {β} {α})
+                    (ordinal-is-well-founded ord-β) X (∖-not-∅ (≡-false neq) α⊆β) (∖-⊆ {β} {α})
                 
                 sublemma : ∃[ y ∈ 𝕍 ] (y ∈-minimal-in X) → α ∈ β
                 sublemma (exists ξ ξ-min-X) = equal-equiv (cong (λ x → x ∈ β) (≗-≡ (symmP α≗ξ))) ξ∈β
@@ -142,7 +151,7 @@ ON-transitive-class {α} ord-α {z} z∈α =
                         ξ⊆α {μ} μ∈ξ = μ∈α
                             where
                                 μ∈β : μ ∈ β
-                                μ∈β = ((ordinal-is-transitive-set {β} ord-β) ξ ξ∈β) μ∈ξ
+                                μ∈β = ((ordinal-is-transitive-set ord-β) .get ξ ξ∈β) μ∈ξ
                             
                                 μ∉X : ¬ μ ∈ X
                                 μ∉X μ∈X = ((π₂ ξ-min-X) μ μ∈X) μ∈ξ
@@ -171,27 +180,27 @@ ON-transitive-class {α} ord-α {z} z∈α =
                                         μ∈β = α⊆β (π₁ μ∈Y)
                                     
                                         dilemma : ξ ∈ μ ∨ μ ≗ ξ
-                                        dilemma = ¬P→P∨Q∨R→Q∨R (π₂ μ∈Y) ((ordinal-has-trichotomy {β} ord-β) μ∈β ξ∈β)
+                                        dilemma = ¬P→P∨Q∨R→Q∨R (π₂ μ∈Y) ((ordinal-has-trichotomy ord-β) μ∈β ξ∈β)
                                         
                                         absurd : ξ ∈ μ ∨ μ ≗ ξ → ⊥
                                         absurd (ι₁ ξ∈μ) =
-                                            (π₂ (π₁ ξ-min-X)) (((ordinal-is-transitive-set {α} ord-α) μ (π₁ μ∈Y)) ξ∈μ)
+                                            (π₂ (π₁ ξ-min-X)) (((ordinal-is-transitive-set ord-α) .get μ (π₁ μ∈Y)) ξ∈μ)
                                         absurd (ι₂ refl𝕍) = (π₂ (π₁ ξ-min-X)) (π₁ μ∈Y)
         
         zag : α ∈ β ∨ (α ≗ β) → α ⊆ β
-        zag (ι₁ α∈β) = (ordinal-is-transitive-set {β} ord-β) α α∈β
+        zag (ι₁ α∈β) = (ordinal-is-transitive-set ord-β) .get α α∈β
         zag (ι₂ refl𝕍) = idP
 
 -- Proof of Theorem I.8.5
 -- (1)
 ∈-transitive-on-ON :
     ∀ {α β γ} → ordinal α → ordinal β → ordinal γ → α ∈ β → β ∈ γ → α ∈ γ
-∈-transitive-on-ON {α} {β} {γ} ord-α ord-β ord-γ α∈β β∈γ =
-    (((ordinal-is-transitive-set {γ} ord-γ) β) β∈γ) α∈β
+∈-transitive-on-ON ord-α ord-β ord-γ α∈β β∈γ =
+    ordinal-is-transitive-set ord-γ .get _ β∈γ α∈β
     
 -- (2)
 ∈-irrefelxive-on-ON : ∀ {α} → ordinal α → ¬ α ∈ α
-∈-irrefelxive-on-ON {α} ord-α α∈α = ((ordinal-is-irreflexive {α} ord-α) α∈α) α∈α
+∈-irrefelxive-on-ON ord-α α∈α = ((ordinal-is-irreflexive ord-α) α∈α) α∈α
 
 -- (3)
 ∈-has-trichotomy-on-ON : ∀ {α β} → ordinal α → ordinal β → α ∈ β ∨ β ∈ α ∨ α ≗ β
@@ -202,7 +211,7 @@ ON-transitive-class {α} ord-α {z} z∈α =
         δ = α ∩ β
         
         ord-δ : ordinal δ
-        ord-δ = ∩-preserves-ordinal {α} {β} ord-α ord-β
+        ord-δ = ∩-preserves-ordinal ord-α ord-β
         
         δ⊆α : δ ⊆ α
         δ⊆α = A∩B⊆A {α} {β}
@@ -211,7 +220,7 @@ ON-transitive-class {α} ord-α {z} z∈α =
         δ⊆β = A∩B⊆B {α} {β}
         
         sublemma : δ ∈ α ∨ δ ≗ α → δ ∈ β ∨ δ ≗ β → α ∈ β ∨ β ∈ α ∨ α ≗ β
-        sublemma (ι₁ δ∈α) (ι₁ δ∈β) = ex-falso (∈-irrefelxive-on-ON {δ} ord-δ δ∈δ)
+        sublemma (ι₁ δ∈α) (ι₁ δ∈β) = ex-falso (∈-irrefelxive-on-ON ord-δ δ∈δ)
             where
                 δ∈δ : δ ∈ δ
                 δ∈δ = [ δ∈α , δ∈β ]
@@ -247,7 +256,7 @@ ON-transitive-class {α} ord-α {z} z∈α =
                                 subsublemma (exists x impl) = exists x (∧-comm (¬[P→¬Q]→P∧Q impl))
                 
                 exists-ξ-least : ∃[ ξ ∈ 𝕍 ] ξ ∈-minimal-in X
-                exists-ξ-least = subsublemma (ordinal-is-well-founded {α} (X⊆ON α α∈X) Y α∩X-nonempty (A∩B⊆A {α} {X}))
+                exists-ξ-least = subsublemma (ordinal-is-well-founded (X⊆ON α α∈X) Y α∩X-nonempty (A∩B⊆A {α} {X}))
                     where
                         subsublemma : ∃[ ξ ∈ 𝕍 ] ξ ∈-minimal-in Y → ∃[ ξ ∈ 𝕍 ] ξ ∈-minimal-in X
                         subsublemma (exists ξ [ ξ∈Y , ξ-min ]) =
@@ -257,12 +266,12 @@ ON-transitive-class {α} ord-α {z} z∈α =
                                     ξ-min-in-X z z∈X z∈ξ = (ξ-min z z∈α∩X) z∈ξ
                                         where
                                             z∈α∩X : z ∈ Y
-                                            z∈α∩X = [ ((ordinal-is-transitive-set {α} (X⊆ON α α∈X)) ξ (π₁ ξ∈Y)) z∈ξ , z∈X ]
+                                            z∈α∩X = [ ((ordinal-is-transitive-set (X⊆ON α α∈X)) .get ξ (π₁ ξ∈Y)) z∈ξ , z∈X ]
 
 -- Theorem I.8.9
 -- ON is a proper class.
 Burali-Forti-Paradox : ∃[ ON ∈ 𝕍 ] (∀ z → z ∈ ON ↔ ordinal z) → ⊥
-Burali-Forti-Paradox (exists ON all-ords) = (ordinal-is-irreflexive {ON} ON-ordinal) ON∈ON ON∈ON
+Burali-Forti-Paradox (exists ON all-ords) = (ordinal-is-irreflexive ON-ordinal) ON∈ON ON∈ON
     where
         z∈ON→ord-z : ∀ {z} → z ∈ ON → ordinal z
         z∈ON→ord-z {z} = π₁ (all-ords z)
@@ -271,25 +280,25 @@ Burali-Forti-Paradox (exists ON all-ords) = (ordinal-is-irreflexive {ON} ON-ordi
         ord-z→z∈ON {z} = π₂ (all-ords z)
         
         ON-ordinal : ordinal ON
-        ON-ordinal = [ trans-set-ON , [ [ [ trans-ON , irreflexive-ON ] , trichotomy-on-ON ] , well-founded-ON ] ]
+        ON-ordinal = mkOrdinal trans-set-ON (mkWO [ [ trans-ON , irreflexive-ON ] , trichotomy-on-ON ] well-founded-ON)
             where
                 trans-set-ON : transitive-set ON
-                trans-set-ON y y∈ON z∈y = ord-z→z∈ON (ON-transitive-class {y} (z∈ON→ord-z y∈ON) z∈y)
+                trans-set-ON .get y y∈ON z∈y = ord-z→z∈ON (ON-transitive-class (z∈ON→ord-z y∈ON) z∈y)
                 
                 irreflexive-ON : ∈-irreflexive ON
-                irreflexive-ON {x} x∈ON = ∈-irrefelxive-on-ON {x} (z∈ON→ord-z x∈ON)
+                irreflexive-ON x∈ON = ∈-irrefelxive-on-ON (z∈ON→ord-z x∈ON)
                 
                 trans-ON : ∈-transitive ON
-                trans-ON {x} {y} {z} x∈ON y∈ON z∈ON =
-                    ∈-transitive-on-ON {x} {y} {z} (z∈ON→ord-z x∈ON) (z∈ON→ord-z y∈ON) (z∈ON→ord-z z∈ON)
+                trans-ON x∈ON y∈ON z∈ON =
+                    ∈-transitive-on-ON (z∈ON→ord-z x∈ON) (z∈ON→ord-z y∈ON) (z∈ON→ord-z z∈ON)
                 
                 trichotomy-on-ON : ∈-trichotomy ON
-                trichotomy-on-ON {x} {y} x∈ON y∈ON =
-                    ∈-has-trichotomy-on-ON {x} {y} (z∈ON→ord-z x∈ON) (z∈ON→ord-z y∈ON)
+                trichotomy-on-ON x∈ON y∈ON =
+                    ∈-has-trichotomy-on-ON (z∈ON→ord-z x∈ON) (z∈ON→ord-z y∈ON)
                 
                 well-founded-ON : ∈-well-founded ON
                 well-founded-ON X X-nonempty X⊆ON =
-                    ∈-well-founded-on-ON {X} X-nonempty X-full-of-ords
+                    ∈-well-founded-on-ON X-nonempty X-full-of-ords
                         where
                             X-full-of-ords : ∀ z → z ∈ X → ordinal z
                             X-full-of-ords z z∈X = z∈ON→ord-z (X⊆ON z∈X)
